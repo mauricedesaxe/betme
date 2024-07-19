@@ -72,6 +72,9 @@ contract BetMe {
         require(msg.sender == winner, "You are not the winner");
 
         uint256 total = bets[bettor1] + bets[bettor2];
+        assert(total > 0);
+        assert(address(this).balance >= total);
+
         payable(msg.sender).transfer(total);
         emit Withdraw(total, block.timestamp, msg.sender);
     }
