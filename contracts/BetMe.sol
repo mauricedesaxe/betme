@@ -72,8 +72,8 @@ contract BetMe {
         require(msg.sender == winner, "You are not the winner");
 
         uint256 total = bets[bettor1] + bets[bettor2];
-        assert(total > 0);
-        assert(address(this).balance >= total);
+        require(total > 0, "Total is 0");
+        require(address(this).balance >= total, "Total is greater than the contract balance");
 
         bets[bettor1] = 0;
         bets[bettor2] = 0;
