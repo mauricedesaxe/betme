@@ -75,6 +75,9 @@ contract BetMe {
         assert(total > 0);
         assert(address(this).balance >= total);
 
+        bets[bettor1] = 0;
+        bets[bettor2] = 0;
+
         payable(msg.sender).transfer(total);
         emit Withdraw(total, block.timestamp, msg.sender);
     }
