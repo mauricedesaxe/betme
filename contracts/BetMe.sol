@@ -79,5 +79,7 @@ contract BetMe {
         emit Withdraw(total, block.timestamp, msg.sender);
     }
 
-    receive() external payable {}
+    receive() external payable {
+        revert("Use bet() to bet");
+    }
 }
