@@ -154,6 +154,24 @@ describe("BetMe", function () {
           ])
         ).to.be.rejectedWith("Bettors can't be the same");
       });
+
+      it("Should not be able to deploy with a bettor as mediator", async function () {
+        const [mediator, bettor1] = await hre.viem.getWalletClients();
+
+        await expect(
+          hre.viem.deployContract("BetMe", [
+            mediator.account.address,
+            bettor1.account.address,
+          ])
+        ).to.be.rejectedWith("A bettor can't be a mediator");
+
+        await expect(
+          hre.viem.deployContract("BetMe", [
+            bettor1.account.address,
+            mediator.account.address,
+          ])
+        ).to.be.rejectedWith("A bettor can't be a mediator");
+      });
     });
 
     describe("When betting", function () {

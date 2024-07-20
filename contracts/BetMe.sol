@@ -27,6 +27,8 @@ contract BetMe {
      */
     constructor(address _bettor1, address _bettor2) payable {
         require(_bettor1 != _bettor2, "Bettors can't be the same");
+        require(_bettor1 != msg.sender, "A bettor can't be a mediator");
+        require(_bettor2 != msg.sender, "A bettor can't be a mediator");
         bettor1 = _bettor1;
         bettor2 = _bettor2;
         mediator = msg.sender;
