@@ -141,4 +141,219 @@ describe("BetMe", function () {
       ).to.equal(initialBalanceOfContract); // contract should have the same balance as on deployment
     });
   });
+
+  describe("Unhappy Paths", function () {
+    describe("When betting", function () {
+      it("Should not be able to deposit 0", async function () {
+        const { betMe, bettor1 } = await loadFixture(deployBetMeFixture);
+
+        await expect(
+          betMe.write.bet({
+            value: parseEther("0"),
+            account: bettor1.account.address,
+          })
+        ).to.be.rejectedWith("Amount must be greater than 0");
+      });
+
+      it("Should not be able to deposit if you are not a bettor", async function () {
+        const { betMe, mediator, otherAccount } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await expect(
+          betMe.write.bet({
+            value: parseEther("1"),
+            account: mediator.account.address,
+          })
+        ).to.be.rejectedWith("You are not a bettor");
+        await expect(
+          betMe.write.bet({
+            value: parseEther("1"),
+            account: otherAccount.account.address,
+          })
+        ).to.be.rejectedWith("You are not a bettor");
+      });
+
+      it("Should not be able to deposit if the bet is already locked", async function () {
+        const { betMe, bettor1, bettor2 } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor2.account.address,
+        });
+
+        await expect(
+          betMe.write.bet({
+            value: parseEther("1"),
+            account: bettor1.account.address,
+          })
+        ).to.be.rejectedWith("The bet is locked");
+      });
+
+      it("Should not lock if both bettors bet aren't the same amount", async function () {
+        const { betMe, bettor1, bettor2 } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("2"),
+          account: bettor2.account.address,
+        });
+
+        expect(await betMe.read.isLocked()).to.be.false;
+      });
+    });
+
+    describe("When picking a winner", function () {
+      it("Should not be able to pick a winner if you are not the mediator", async function () {
+        const { betMe, bettor1, bettor2, otherAccount } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor2.account.address,
+        });
+
+        // impersonate bettor1 & try to pick self; should fail
+        await expect(
+          betMe.write.pickWinner([bettor1.account.address], {
+            account: bettor1.account.address,
+          })
+        ).to.be.rejectedWith("You are not the mediator");
+
+        // impersonate otherAccount & try to pick self; should fail
+        await expect(
+          betMe.write.pickWinner([otherAccount.account.address], {
+            account: otherAccount.account.address,
+          })
+        ).to.be.rejectedWith("You are not the mediator");
+      });
+
+      it("Should not be able to pick a winner if the bet is not locked", async function () {
+        const { betMe, bettor1, bettor2 } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+
+        await expect(
+          betMe.write.pickWinner([bettor1.account.address])
+        ).to.be.rejectedWith("The bet is not locked");
+      });
+
+      it("Should not be able to pick a winner if the bet is already won", async function () {
+        const { betMe, bettor1, bettor2 } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor2.account.address,
+        });
+        await betMe.write.pickWinner([bettor1.account.address]);
+
+        await expect(
+          betMe.write.pickWinner([bettor1.account.address])
+        ).to.be.rejectedWith("The winner is already picked");
+      });
+
+      it("Should not be able to pick a winner that is not a bettor", async function () {
+        const { betMe, bettor1, bettor2, mediator, otherAccount } =
+          await loadFixture(deployBetMeFixture);
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor2.account.address,
+        });
+
+        await expect(
+          betMe.write.pickWinner([mediator.account.address])
+        ).to.be.rejectedWith("The winner is not a bettor");
+        await expect(
+          betMe.write.pickWinner([otherAccount.account.address])
+        ).to.be.rejectedWith("The winner is not a bettor");
+      });
+    });
+
+    describe("When withdrawing", function () {
+      it("Should not be able to withdraw if the winner is not picked", async function () {
+        const { betMe, bettor1, bettor2 } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor2.account.address,
+        });
+
+        await expect(
+          betMe.write.withdraw({
+            account: bettor1.account.address,
+          })
+        ).to.be.rejectedWith("The winner is not picked");
+      });
+
+      it("Should not be able to withdraw if the winner is not a the winner", async function () {
+        const { betMe, bettor1, bettor2, mediator, otherAccount } =
+          await loadFixture(deployBetMeFixture);
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor2.account.address,
+        });
+
+        await betMe.write.pickWinner([bettor1.account.address]);
+
+        await expect(
+          betMe.write.withdraw({
+            account: bettor2.account.address,
+          })
+        ).to.be.rejectedWith("You are not the winner");
+        await expect(
+          betMe.write.withdraw({
+            account: mediator.account.address,
+          })
+        ).to.be.rejectedWith("You are not the winner");
+        await expect(
+          betMe.write.withdraw({
+            account: otherAccount.account.address,
+          })
+        ).to.be.rejectedWith("You are not the winner");
+      });
+    });
+  });
 });
