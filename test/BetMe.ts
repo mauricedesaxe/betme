@@ -47,6 +47,14 @@ describe("BetMe", function () {
       );
     });
 
+    it("Should be able to set a new mediator", async function () {
+      const { betMe, otherAccount } = await loadFixture(deployBetMeFixture);
+      await betMe.write.setMediator([otherAccount.account.address]);
+      expect(await betMe.read.mediator()).to.equal(
+        getAddress(otherAccount.account.address)
+      );
+    });
+
     it("Should lock the bet if both bettors bet the same amount", async function () {
       const { betMe, bettor1, bettor2 } = await loadFixture(deployBetMeFixture);
 
@@ -171,6 +179,61 @@ describe("BetMe", function () {
             mediator.account.address,
           ])
         ).to.be.rejectedWith("A bettor can't be a mediator");
+      });
+    });
+
+    describe("When setting a new mediator", function () {
+      it("Should not be able to set a new mediator if the caller is not the old mediator", async function () {
+        const { betMe, bettor1, bettor2, otherAccount } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await expect(
+          betMe.write.setMediator([otherAccount.account.address], {
+            account: otherAccount.account.address,
+          })
+        ).to.be.rejectedWith("You are not the mediator");
+      });
+
+      it("Should not be able to set a new mediator if the bet is locked", async function () {
+        const { betMe, bettor1, bettor2, otherAccount } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor1.account.address,
+        });
+        await betMe.write.bet({
+          value: parseEther("1"),
+          account: bettor2.account.address,
+        });
+
+        await expect(
+          betMe.write.setMediator([otherAccount.account.address])
+        ).to.be.rejectedWith("Can't set new mediator after bet is locked");
+      });
+
+      it("Should not be able to set a new mediator to 0", async function () {
+        const { betMe } = await loadFixture(deployBetMeFixture);
+
+        const zeroAddress = "0x0000000000000000000000000000000000000000";
+        await expect(betMe.write.setMediator([zeroAddress])).to.be.rejectedWith(
+          "Can't set new mediator to 0"
+        );
+      });
+
+      it("Should not be able to set a new mediator to one of the bettor", async function () {
+        const { betMe, bettor1, bettor2 } = await loadFixture(
+          deployBetMeFixture
+        );
+
+        await expect(
+          betMe.write.setMediator([bettor1.account.address])
+        ).to.be.rejectedWith("Can't set new mediator to bettor1");
+        await expect(
+          betMe.write.setMediator([bettor2.account.address])
+        ).to.be.rejectedWith("Can't set new mediator to bettor2");
       });
     });
 

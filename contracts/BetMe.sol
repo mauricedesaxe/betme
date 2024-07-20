@@ -19,6 +19,7 @@ contract BetMe {
     event Bet(uint256 amount, uint256 when, address who);
     event Winner(uint256 amount, uint256 when, address who);
     event Withdraw(uint256 amount, uint256 when, address who);
+    event NewMediator(uint256 when, address oldMediator, address newMediator);
 
     /**
      * @notice Mediator creates the contract assigning the bettors.
@@ -32,6 +33,23 @@ contract BetMe {
         bettor1 = _bettor1;
         bettor2 = _bettor2;
         mediator = msg.sender;
+    }
+
+    /**
+     * @notice The mediator can set a new mediator. Can be used to transfer the contract to a new mediator,
+     * including an automated smart contract.
+     * @param _newMediator Address of the new mediator.
+     * @dev The new mediator can't be the same as the bettor1 or bettor2,
+     * and can't be 0.
+     */
+    function setMediator(address _newMediator) public {
+        require(msg.sender == mediator, "You are not the mediator");
+        require(!isLocked, "Can't set new mediator after bet is locked");
+        require(_newMediator != address(0), "Can't set new mediator to 0");
+        require(_newMediator != bettor1, "Can't set new mediator to bettor1");
+        require(_newMediator != bettor2, "Can't set new mediator to bettor2");
+        mediator = _newMediator;
+        emit NewMediator(block.timestamp, msg.sender, _newMediator);
     }
 
     /**
