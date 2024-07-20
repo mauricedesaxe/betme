@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 /**
  * @title BetMe
  * @author MauriceDeSaxe
- * @notice A simple 1v1 betting contract with a mediator.
+ * @notice A simple 2-player 1:1 betting contract with a mediator.
+ * That means each bettor bets an equal amount and the mediator picks the winner.
  */
 contract BetMe {
     address public mediator;
