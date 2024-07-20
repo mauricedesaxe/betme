@@ -143,6 +143,19 @@ describe("BetMe", function () {
   });
 
   describe("Unhappy Paths", function () {
+    describe("When deploying", function () {
+      it("Should not be able to deploy with the same bettor", async function () {
+        const [bettor1] = await hre.viem.getWalletClients();
+
+        await expect(
+          hre.viem.deployContract("BetMe", [
+            bettor1.account.address,
+            bettor1.account.address,
+          ])
+        ).to.be.rejectedWith("Bettors can't be the same");
+      });
+    });
+
     describe("When betting", function () {
       it("Should not be able to deposit 0", async function () {
         const { betMe, bettor1 } = await loadFixture(deployBetMeFixture);

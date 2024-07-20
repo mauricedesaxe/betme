@@ -26,9 +26,10 @@ contract BetMe {
      * @param _bettor2 Address of the second bettor.
      */
     constructor(address _bettor1, address _bettor2) payable {
-        mediator = msg.sender;
+        require(_bettor1 != _bettor2, "Bettors can't be the same");
         bettor1 = _bettor1;
         bettor2 = _bettor2;
+        mediator = msg.sender;
     }
 
     /**
