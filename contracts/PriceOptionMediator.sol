@@ -105,7 +105,7 @@ contract PriceOptionMediator {
             /*uint timeStamp*/
             ,
             /*uint80 answeredInRound*/
-        ) = dataFeed.latestRoundData();
+        ) = dataFeed.latestRoundData(); // technically this could be reentrant, but the called contract is set in the constructor by a trusted deployer
 
         // TODO check data feed heartbeat
 
@@ -128,7 +128,7 @@ contract PriceOptionMediator {
         if (winner == address(0)) {
             revert("No winner");
         }
-        BetMe(betMe).pickWinner(winner);
+        BetMe(betMe).pickWinner(winner); // technically this could be reentrant, but the called contract is set in the constructor by a trusted deployer
         emit WinnerPicked(winner);
     }
 }
