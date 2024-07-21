@@ -30,7 +30,7 @@ contract PriceOptionMediator {
 
     event PriceOptionMediatorCreated(
         address indexed dataFeed,
-        string optionType,
+        string indexed optionType,
         address indexed buyer,
         address indexed seller,
         uint256 strikePrice,
