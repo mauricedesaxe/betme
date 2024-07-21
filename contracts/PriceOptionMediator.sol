@@ -28,7 +28,7 @@ contract PriceOptionMediator {
         uint256 expiration;
     }
 
-    event PutMediatorCreated(
+    event PriceOptionMediatorCreated(
         address indexed dataFeed,
         string optionType,
         address indexed putBuyer,
@@ -75,6 +75,7 @@ contract PriceOptionMediator {
         expiration = _props.expiration;
 
         betMe = address(new BetMe(_props.buyer, _props.seller));
+        emit PriceOptionMediatorCreated(address(dataFeed), optionType, buyer, seller, strikePrice, expiration);
     }
 
     /**
