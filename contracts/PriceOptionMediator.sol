@@ -31,8 +31,8 @@ contract PriceOptionMediator {
     event PriceOptionMediatorCreated(
         address indexed dataFeed,
         string optionType,
-        address indexed putBuyer,
-        address indexed putSeller,
+        address indexed buyer,
+        address indexed seller,
         uint256 strikePrice,
         uint256 expiration
     );
@@ -43,7 +43,7 @@ contract PriceOptionMediator {
         bool missingProps = _props.dataFeed == address(0) || _props.buyer == address(0) || _props.seller == address(0)
             || _props.strikePrice == 0 || _props.expiration == 0 || _props.optionType == "";
         if (missingProps) {
-            revert("DataFeed, PutBuyer, PutSeller, StrikePrice, Expiration and OptionType are all required");
+            revert("DataFeed, Buyer, Seller, StrikePrice, Expiration and OptionType are all required");
         }
 
         bool expired = block.timestamp > _props.expiration;
