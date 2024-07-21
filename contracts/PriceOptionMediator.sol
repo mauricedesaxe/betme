@@ -36,8 +36,7 @@ contract PriceOptionMediator {
         uint256 strikePrice,
         uint256 expiration
     );
-
-    event WinnerPicked(address indexed winner);
+    event WinnerPicked(address indexed winner, uint256 strikePrice, uint256 expiration, string optionType);
 
     constructor(CProps memory _props) {
         bool missingProps = _props.dataFeed == address(0) || _props.buyer == address(0) || _props.seller == address(0)
@@ -92,7 +91,7 @@ contract PriceOptionMediator {
             // The option has expired, so the put seller wins; we don't need to check the price
             winner = seller;
             BetMe(betMe).pickWinner(winner);
-            emit WinnerPicked(winner);
+            emit WinnerPicked(winner, strikePrice, expiration, optionType);
             return; // stop further execution
         }
 
@@ -129,6 +128,6 @@ contract PriceOptionMediator {
             revert("No winner");
         }
         BetMe(betMe).pickWinner(winner); // technically this could be reentrant, but the called contract is set in the constructor by a trusted deployer
-        emit WinnerPicked(winner);
+        emit WinnerPicked(winner, strikePrice, expiration, optionType);
     }
 }
