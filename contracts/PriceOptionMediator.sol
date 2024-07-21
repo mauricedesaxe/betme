@@ -11,6 +11,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
  * given asset will raise/fall to a certain "strike" price before a certain date.
  * @dev The data feed heartbeat is optional, but is recommended to avoid stale pricing data
  * which can be a very real security risk.
+ * @dev Please check the data feed's decimals before setting the strike price.
  */
 contract PriceOptionMediator {
     AggregatorV3Interface internal dataFeed;
