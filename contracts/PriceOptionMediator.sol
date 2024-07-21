@@ -5,29 +5,32 @@ import {BetMe} from "./BetMe.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
- * @title PutMediator
+ * @title PriceOptionMediator
  * @author MauriceDeSaxe
  * @notice Mediates a bet between two players that the price of a certain
- * given asset will fall to a certain price before a certain date.
+ * given asset will raise/fall to a certain "strike" price before a certain date.
  */
-contract PutMediator {
+contract PriceOptionMediator {
     AggregatorV3Interface internal dataFeed;
-    address public putBuyer;
-    address public putSeller;
+    string public optionType; // "put" or "call"
+    address public buyer;
+    address public seller;
     uint256 public strikePrice;
     uint256 public expiration;
     address public betMe;
 
     struct CProps {
         address dataFeed;
-        address putBuyer;
-        address putSeller;
+        string optionType;
+        address buyer;
+        address seller;
         uint256 strikePrice;
         uint256 expiration;
     }
 
     event PutMediatorCreated(
         address indexed dataFeed,
+        string optionType,
         address indexed putBuyer,
         address indexed putSeller,
         uint256 strikePrice,
@@ -37,10 +40,10 @@ contract PutMediator {
     event WinnerPicked(address indexed winner);
 
     constructor(CProps memory _props) {
-        bool missingProps = _props.dataFeed == address(0) || _props.putBuyer == address(0)
-            || _props.putSeller == address(0) || _props.strikePrice == 0 || _props.expiration == 0;
+        bool missingProps = _props.dataFeed == address(0) || _props.buyer == address(0) || _props.seller == address(0)
+            || _props.strikePrice == 0 || _props.expiration == 0 || _props.optionType == "";
         if (missingProps) {
-            revert("DataFeed, PutBuyer, PutSeller, StrikePrice and Expiration are all required");
+            revert("DataFeed, PutBuyer, PutSeller, StrikePrice, Expiration and OptionType are all required");
         }
 
         bool expired = block.timestamp > _props.expiration;
@@ -50,17 +53,28 @@ contract PutMediator {
 
         dataFeed = AggregatorV3Interface(_props.dataFeed);
 
-        bool strikePriceTooHigh = _props.strikePrice > getChainlinkDataFeedLatestAnswer();
-        if (strikePriceTooHigh) {
-            revert("StrikePrice is too high");
+        if (_props.optionType != "put" && _props.optionType != "call") {
+            revert("OptionType must be either 'put' or 'call'");
+        }
+        if (_props.optionType == "put") {
+            bool strikePriceTooHigh = _props.strikePrice > getChainlinkDataFeedLatestAnswer();
+            if (strikePriceTooHigh) {
+                revert("StrikePrice is too high for a put option");
+            }
+        } else {
+            bool strikePriceTooLow = _props.strikePrice < getChainlinkDataFeedLatestAnswer();
+            if (strikePriceTooLow) {
+                revert("StrikePrice is too low for a call option");
+            }
         }
 
-        putBuyer = _props.putBuyer;
-        putSeller = _props.putSeller;
+        optionType = _props.optionType;
+        buyer = _props.buyer;
+        seller = _props.seller;
         strikePrice = _props.strikePrice;
         expiration = _props.expiration;
 
-        betMe = address(new BetMe(_props.putBuyer, _props.putSeller));
+        betMe = address(new BetMe(_props.buyer, _props.seller));
     }
 
     /**
@@ -75,7 +89,7 @@ contract PutMediator {
         bool expired = block.timestamp > expiration;
         if (expired) {
             // The option has expired, so the put seller wins; we don't need to check the price
-            winner = putSeller;
+            winner = seller;
             BetMe(betMe).pickWinner(winner);
             emit WinnerPicked(winner);
             return; // stop further execution
@@ -94,11 +108,20 @@ contract PutMediator {
 
         // TODO check data feed heartbeat
 
-        bool isAboveStrikePrice = answer > strikePrice;
-        if (!isAboveStrikePrice) {
-            // The put buyer has bet that the price will fall at/below the strike price
-            // within the expiration period, so they win
-            winner = putBuyer;
+        if (optionType == "put") {
+            bool isAboveStrikePrice = answer > strikePrice;
+            if (!isAboveStrikePrice) {
+                // The put buyer has bet that the price will fall at/below the strike price
+                // within the expiration period, so they win
+                winner = buyer;
+            }
+        } else {
+            bool isBelowStrikePrice = answer < strikePrice;
+            if (!isBelowStrikePrice) {
+                // The put seller has bet that the price will rise above the strike price
+                // within the expiration period, so they win
+                winner = seller;
+            }
         }
 
         if (winner == address(0)) {
