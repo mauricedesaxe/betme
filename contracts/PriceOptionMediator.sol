@@ -9,9 +9,12 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
  * @author MauriceDeSaxe
  * @notice Mediates a bet between two players that the price of a certain
  * given asset will raise/fall to a certain "strike" price before a certain date.
+ * @dev The data feed heartbeat is optional, but is recommended to avoid stale pricing data
+ * which can be a very real security risk.
  */
 contract PriceOptionMediator {
     AggregatorV3Interface internal dataFeed;
+    uint256 public dataFeedHeartbeat;
     string public optionType; // "put" or "call"
     address public buyer;
     address public seller;
@@ -21,6 +24,7 @@ contract PriceOptionMediator {
 
     struct CProps {
         address dataFeed;
+        uint256 dataFeedHeartbeat;
         string optionType;
         address buyer;
         address seller;
@@ -51,6 +55,11 @@ contract PriceOptionMediator {
         }
 
         dataFeed = AggregatorV3Interface(_props.dataFeed);
+        if (_props.dataFeedHeartbeat != 0) {
+            // dataFeedHeartbeat is optional and can be used to check that the data feed is still healthy.
+            // It's recommended that the deployer set this value to avoid stale pricing data.
+            dataFeedHeartbeat = _props.dataFeedHeartbeat;
+        }
 
         if (_props.optionType != "put" && _props.optionType != "call") {
             revert("OptionType must be either 'put' or 'call'");
@@ -82,6 +91,8 @@ contract PriceOptionMediator {
      * @dev We use a Chainlink data feed to get the price of the asset.
      * @dev If the price is at/below the strike price and the expiration date has not passed, the putBuyer wins.
      * @dev If the expiration date has passed, the putSeller wins.
+     * @dev The data feed heartbeat is optional, but is recommended to avoid stale pricing data
+     * which can be a very real security risk.
      */
     function tryPickWinner() external {
         address winner;
@@ -101,12 +112,18 @@ contract PriceOptionMediator {
             int256 answer,
             /*uint startedAt*/
             ,
-            /*uint timeStamp*/
-            ,
+            uint256 timeStamp,
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData(); // technically this could be reentrant, but the called contract is set in the constructor by a trusted deployer
 
-        // TODO check data feed heartbeat
+        // this only runs if dataFeedHeartbeat is set; it's optional but highly recommended that the deployer set this value to avoid stale pricing data
+        if (dataFeedHeartbeat != 0) {
+            // timeStamp of latest round + heartbeat threshold > now
+            bool isWithinHeartbeat = timeStamp + dataFeedHeartbeat > block.timestamp;
+            if (!isWithinHeartbeat) {
+                revert("DataFeed heartbeat expired");
+            }
+        }
 
         if (optionType == "put") {
             bool isAboveStrikePrice = answer > strikePrice;
