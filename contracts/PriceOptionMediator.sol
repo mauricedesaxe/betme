@@ -62,16 +62,26 @@ contract PriceOptionMediator {
             dataFeedHeartbeat = _props.dataFeedHeartbeat;
         }
 
+        (
+            /* uint80 roundID */
+            ,
+            int256 answer,
+            /*uint startedAt*/
+            ,
+            uint256 timeStamp,
+            /*uint80 answeredInRound*/
+        ) = dataFeed.latestRoundData(); // technically this could be reentrant, but the called contract is set in the constructor by a trusted deployer
+
         if (_props.optionType != "put" && _props.optionType != "call") {
             revert("OptionType must be either 'put' or 'call'");
         }
         if (_props.optionType == "put") {
-            bool strikePriceTooHigh = _props.strikePrice > getChainlinkDataFeedLatestAnswer();
+            bool strikePriceTooHigh = _props.strikePrice >= uint256(answer);
             if (strikePriceTooHigh) {
                 revert("StrikePrice is too high for a put option");
             }
         } else {
-            bool strikePriceTooLow = _props.strikePrice < getChainlinkDataFeedLatestAnswer();
+            bool strikePriceTooLow = _props.strikePrice <= uint256(answer);
             if (strikePriceTooLow) {
                 revert("StrikePrice is too low for a call option");
             }
@@ -127,14 +137,14 @@ contract PriceOptionMediator {
         }
 
         if (optionType == "put") {
-            bool isAboveStrikePrice = answer > strikePrice;
+            bool isAboveStrikePrice = uint256(answer) > strikePrice;
             if (!isAboveStrikePrice) {
                 // The put buyer has bet that the price will fall at/below the strike price
                 // within the expiration period, so they win
                 winner = buyer;
             }
         } else {
-            bool isBelowStrikePrice = answer < strikePrice;
+            bool isBelowStrikePrice = uint256(answer) < strikePrice;
             if (!isBelowStrikePrice) {
                 // The put seller has bet that the price will rise above the strike price
                 // within the expiration period, so they win
