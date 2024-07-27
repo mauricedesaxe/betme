@@ -45,7 +45,8 @@ contract PriceOptionMediator {
 
     constructor(CProps memory _props) {
         bool missingProps = _props.dataFeed == address(0) || _props.buyer == address(0) || _props.seller == address(0)
-            || _props.strikePrice == 0 || _props.expiration == 0 || _props.optionType == "";
+            || _props.strikePrice == 0 || _props.expiration == 0
+            || keccak256(abi.encodePacked(_props.optionType)) == keccak256(abi.encodePacked(""));
         if (missingProps) {
             revert("DataFeed, Buyer, Seller, StrikePrice, Expiration and OptionType are all required");
         }
@@ -72,10 +73,13 @@ contract PriceOptionMediator {
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData(); // technically this could be reentrant, but the called contract is set in the constructor by a trusted deployer
 
-        if (_props.optionType != "put" && _props.optionType != "call") {
+        if (
+            keccak256(abi.encodePacked(_props.optionType)) != keccak256(abi.encodePacked("put"))
+                && keccak256(abi.encodePacked(_props.optionType)) != keccak256(abi.encodePacked("call"))
+        ) {
             revert("OptionType must be either 'put' or 'call'");
         }
-        if (_props.optionType == "put") {
+        if (keccak256(abi.encodePacked(_props.optionType)) == keccak256(abi.encodePacked("put"))) {
             bool strikePriceTooHigh = _props.strikePrice >= uint256(answer);
             if (strikePriceTooHigh) {
                 revert("StrikePrice is too high for a put option");
@@ -136,7 +140,7 @@ contract PriceOptionMediator {
             }
         }
 
-        if (optionType == "put") {
+        if (keccak256(abi.encodePacked(optionType)) == keccak256(abi.encodePacked("put"))) {
             bool isAboveStrikePrice = uint256(answer) > strikePrice;
             if (!isAboveStrikePrice) {
                 // The put buyer has bet that the price will fall at/below the strike price
