@@ -21,7 +21,7 @@ contract PriceOptionMediator {
     address public seller;
     uint256 public strikePrice;
     uint256 public expiration;
-    address payable public betMe;
+    BetMe public betMe;
 
     struct CProps {
         address dataFeed;
@@ -97,7 +97,7 @@ contract PriceOptionMediator {
         strikePrice = _props.strikePrice;
         expiration = _props.expiration;
 
-        betMe = payable(new BetMe(_props.buyer, _props.seller));
+        betMe = new BetMe(_props.buyer, _props.seller);
         emit PriceOptionMediatorCreated(address(dataFeed), optionType, buyer, seller, strikePrice, expiration);
     }
 
