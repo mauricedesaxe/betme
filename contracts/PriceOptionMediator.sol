@@ -73,6 +73,14 @@ contract PriceOptionMediator {
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData(); // technically this could be reentrant, but the called contract is set in the constructor by a trusted deployer
 
+        if (_props.dataFeedHeartbeat != 0) {
+            // timeStamp of latest round + heartbeat threshold > now
+            bool isWithinHeartbeat = timeStamp + _props.dataFeedHeartbeat > block.timestamp;
+            if (!isWithinHeartbeat) {
+                revert("DataFeed heartbeat expired");
+            }
+        }
+
         if (
             keccak256(abi.encodePacked(_props.optionType)) != keccak256(abi.encodePacked("put"))
                 && keccak256(abi.encodePacked(_props.optionType)) != keccak256(abi.encodePacked("call"))
